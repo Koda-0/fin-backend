@@ -62,7 +62,7 @@ if(isset($_POST['login'])){
         ?>
         <script>
             window.alert("Login Successfull");
-            window.location.href = "http://localhost/fin-backend/P.PHP";
+            window.location.href = "https://github.com/Koda-0/fin-backend/blob/main/parent.php";
         </script>
         <?php
        }
