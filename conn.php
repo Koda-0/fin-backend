@@ -1,5 +1,5 @@
 <?php
-$host='localhost';
+$host='http://localhost/phpmyadmin/index.php?route=/database/structure&db=finance';
 $user='root';
 $password='';
 $database='finance';
