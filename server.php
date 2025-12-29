@@ -6,7 +6,7 @@ if(isset($_POST['register'])){
 
     $username=trim($_POST['names']);
     $password=trim($_POST['password']);
-    $phone = trim($_POST['phone']);
+    $phone=trim($_POST['phone']);
     $province = trim($_POST['province']);
     $district = trim($_POST['district']);
     $role= 'parent';
@@ -52,17 +52,20 @@ if(isset($_POST['login'])){
     $password = trim($_POST['password']);
 
     $sel = $conn->query("SELECT pin FROM users");
-
+    $sql = $conn->query("SELECT phone FROM users WHERE username = $username");
+    
     if($sel->num_rows>0){
         $pass = $sel->fetch_assoc();
+        $phone = $sql->fetch_assoc();
         $pin = $pass['pin'];
        if(password_verify($password,$pin)){
         $_SESSION['id'] = $pass['user_id'];
+        $_SESSION['phone'] = $phone['phone'];
         $_SESSION['username']=$username;
         ?>
         <script>
             window.alert("Login Successfull");
-            window.location.href = "http://localhost/fin-backend/P.PHP";
+            window.location.href = "http://localhost/fin-backend/parent.php";
         </script>
         <?php
        }

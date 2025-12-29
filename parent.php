@@ -1,5 +1,6 @@
 <?php
 session_start();
+include 'conn.php';
 ?>
 
 <!DOCTYPE html>
@@ -9,6 +10,7 @@ session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parent Dashboard - MyChild</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <script src="./api.js"></script>
     <style>
         .gradient-bg {
@@ -61,7 +63,7 @@ session_start();
                 <button onclick="toggleSidebar()" class="md:hidden text-gray-800 text-2xl">☰</button>
                 <div class="flex items-center space-x-2">
                     <span class="text-2xl">👪</span>
-                    <h1 class="text-xl font-bold text-gray-800">MyChild</h1>
+                    <h1 class="text-xl font-bold text-gray-800">MYCHILD</h1>
                 </div>
             </div>
             <div class="flex items-center space-x-4">
@@ -77,10 +79,20 @@ session_start();
             <div class="p-6">
                 <div class="mb-8">
                     <div class="text-center">
+                        <?php
+$user_id = (int)$_SESSION['id'];
+$sel = $conn->query("SELECT * FROM users WHERE user_id = $user_id");
+$row = $sel->fetch_assoc();
+
+                        ?>
                         <div class="text-5xl mb-3">👤</div>
-                        <h2 class="text-lg font-bold text-gray-800" id="sidebarName">Parent User</h2>
-                        <p class="text-gray-600 text-sm mt-1" id="sidebarPhone">+250 (Not set)</p>
+                        <h2 class="text-lg font-bold text-gray-800" id="sidebarName"><?= $_SESSION['username'] ?></h2>
+                        <p class="text-gray-600 text-sm mt-1" id="sidebarPhone">
+    +25 <?= isset($row['phone']) ? htmlspecialchars($row['phone']) : 'N/A' ?>
+</p>
+
                     </div>
+
                 </div>
 
                 <nav class="space-y-2">
