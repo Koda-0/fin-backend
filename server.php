@@ -51,17 +51,17 @@ if(isset($_POST['login'])){
     $username = trim($_POST['names']);
     $password = trim($_POST['password']);
 
-    $sel = $conn->query("SELECT pin FROM users");
-    $sql = $conn->query("SELECT phone FROM users WHERE username = $username");
+    $stmt = $conn->prepare("SELECT user_id, pin, full_name FROM users WHERE full_name = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
     
-    if($sel->num_rows>0){
-        $pass = $sel->fetch_assoc();
-        $phone = $sql->fetch_assoc();
-        $pin = $pass['pin'];
-       if(password_verify($password,$pin)){
-        $_SESSION['id'] = $pass['user_id'];
-        $_SESSION['phone'] = $phone['phone'];
-        $_SESSION['username']=$username;
+    if($result->num_rows > 0){
+        $user = $result->fetch_assoc();
+        $pin = $user['pin'];
+       if(password_verify($password, $pin)){
+        $_SESSION['username'] = $user['full_name'];
+        $_SESSION['id'] = $user['user_id'];
         ?>
         <script>
             window.alert("Login Successfull");
@@ -74,10 +74,19 @@ if(isset($_POST['login'])){
         ?>
         <script>
             window.alert("Incorrect Username Or Password!");
-            window.Location.href = "http://127.0.0.1:5500/login.html";
+            window.location.href = "http://127.0.0.1:5500/login.html";
         </script>
         <?php
        }
+       $stmt->close();
+    }
+    else{
+        ?>
+        <script>
+            window.alert("Incorrect Username Or Password!");
+            window.location.href = "http://127.0.0.1:5500/login.html";
+        </script>
+        <?php
     }
 
 }
@@ -133,7 +142,7 @@ if(isset($_POST['deposit'])){
     else{
         ?>
         <script>
-            window.alert("Failed To Deposited!");
+            window.alert("Failed To Be Deposited!");
         </script>
       <?php
     }

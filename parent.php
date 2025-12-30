@@ -80,16 +80,43 @@ include 'conn.php';
                 <div class="mb-8">
                     <div class="text-center">
                         <?php
-$user_id = (int)$_SESSION['id'];
-$sel = $conn->query("SELECT * FROM users WHERE user_id = $user_id");
-$row = $sel->fetch_assoc();
-
+                        // Retrieve phone number from database
+                        $user_id = isset($_SESSION['id']) ? (int)$_SESSION['id'] : 0;
+                        $phone = 'N/A';
+                        
+                        // If session id not set, try to get it from username
+                        if ($user_id <= 0 && isset($_SESSION['username'])) {
+                            $username = $_SESSION['username'];
+                            $stmt = $conn->prepare("SELECT user_id, phone FROM users WHERE full_name = ?");
+                            if ($stmt) {
+                                $stmt->bind_param("s", $username);
+                                $stmt->execute();
+                                $result = $stmt->get_result();
+                                if ($row = $result->fetch_assoc()) {
+                                    $user_id = (int)$row['user_id'];
+                                    $_SESSION['id'] = $user_id;
+                                    $phone = isset($row['phone']) ? htmlspecialchars($row['phone']) : 'N/A';
+                                }
+                                $stmt->close();
+                            }
+                        } elseif ($user_id > 0) {
+                            $stmt = $conn->prepare("SELECT phone FROM users WHERE user_id = ?");
+                            if ($stmt) {
+                                $stmt->bind_param("i", $user_id);
+                                $stmt->execute();
+                                $result = $stmt->get_result();
+                                if ($row = $result->fetch_assoc()) {
+                                    $phone = isset($row['phone']) ? htmlspecialchars($row['phone']) : 'N/A';
+                                }
+                                $stmt->close();
+                            }
+                        }
                         ?>
                         <div class="text-5xl mb-3">👤</div>
                         <h2 class="text-lg font-bold text-gray-800" id="sidebarName"><?= $_SESSION['username'] ?></h2>
                         <p class="text-gray-600 text-sm mt-1" id="sidebarPhone">
-    +25 <?= isset($row['phone']) ? htmlspecialchars($row['phone']) : 'N/A' ?>
-</p>
+                            +25 <?= $phone ?>
+                        </p>
 
                     </div>
 
@@ -399,7 +426,7 @@ $row = $sel->fetch_assoc();
         </section>
 
         <!-- Settings Section -->
-        <section id="settings" class="view-section hidden">
+        <section id="settings" class="view-section">
             <div class="mb-8">
                 <div class="flex items-center gap-2 mb-8">
                     <button onclick="showSection('overview')" class="text-blue-600 hover:text-blue-800 text-lg">←</button>
@@ -514,7 +541,7 @@ $row = $sel->fetch_assoc();
                 </div>
 
                 <!-- Child Profile -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-md p-6">
                         <p class="text-gray-600 font-bold mb-2">Name</p>
                         <p id="childDetailNameText" class="text-2xl font-bold text-gray-800">Child Name</p>
@@ -526,6 +553,10 @@ $row = $sel->fetch_assoc();
                     <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-md p-6">
                         <p class="text-gray-600 font-bold mb-2">Savings Goal</p>
                         <p id="childDetailGoal" class="text-2xl font-bold text-gray-800">FRW 0</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg shadow-md p-6">
+                        <p class="text-gray-600 font-bold mb-2">Registration Number</p>
+                        <p id="childDetailRegNumber" class="text-4xl font-bold text-gray-800 font-mono">N/A</p>
                     </div>
                 </div>
 
@@ -637,8 +668,9 @@ $row = $sel->fetch_assoc();
                 </div>
 
                 <div class="mb-6">
-                    <label class="block text-gray-700 font-bold mb-2">PIN</label>
-                    <input type="password" id="depositPIN" placeholder="Enter PIN" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                    <label class="block text-gray-700 font-bold mb-2">Enter Your Password (PIN)</label>
+                    <input type="password" id="depositPIN" placeholder="Enter your login password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                    <p class="text-gray-500 text-sm mt-1">Use the same password you used to login</p>
                 </div>
 
                 <div class="flex gap-4">
@@ -790,10 +822,10 @@ $row = $sel->fetch_assoc();
     </div>
 
 <script>
-            let parentData = {
-            name: 'Parent User',
+        let parentData = {
+            name: '<?= htmlspecialchars($_SESSION['username'] ?? 'Parent User') ?>',
             email: '',
-            phone: '',
+            phone: '<?= $phone ?>',
             children: [],
             contributors: [],
             transactions: [],
@@ -801,94 +833,144 @@ $row = $sel->fetch_assoc();
                 { type: 'mtn', name: 'My MTN', status: 'Active' },
                 { type: 'airtel', name: 'My Airtel', status: 'Active' }
             ],
-            pin: '1234',
-            accountCreated: new Date().toLocaleDateString()
+            accountCreated: ''
         };
 
+        // API Helper
+        async function apiCall(action, data = null, method = 'GET') {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                if (data && method !== 'GET') {
+                    options.body = JSON.stringify(data);
+                }
+                const url = `api.php?action=${action}` + (data && method === 'GET' ? '&' + new URLSearchParams(data).toString() : '');
+                const response = await fetch(url, options);
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: 'Network error' };
+            }
+        }
+
         // Initialize
-        window.addEventListener('DOMContentLoaded', function() {
-            loadData();
-            updateDashboard();
+        window.addEventListener('DOMContentLoaded', async function() {
+            await loadData();
+            await updateDashboard();
             populateChildSelects();
-            updateAccountDisplay();
+            await updateAccountDisplay();
         });
 
         // Add Child
-        function addChild(event) {
+        async function addChild(event) {
             event.preventDefault();
-            const child = {
-                id: 'child-' + Date.now(),
-                name: document.getElementById('childName').value,
-                dob: document.getElementById('childDOB').value,
-                goal: parseFloat(document.getElementById('savingsGoal').value),
-                balance: 0
-            };
-            parentData.children.push(child);
-            saveData();
-            closeAddChildModal();
-            document.getElementById('addChildForm').reset();
-            updateDashboard();
+            const name = document.getElementById('childName').value;
+            const dob = document.getElementById('childDOB').value;
+            const goal = parseFloat(document.getElementById('savingsGoal').value);
+            
+            const result = await apiCall('addChild', { name, dob, goal }, 'POST');
+            
+            if (result.success) {
+                closeAddChildModal();
+                document.getElementById('addChildForm').reset();
+                await loadData();
+                await updateDashboard();
+                alert('Child added successfully!');
+            } else {
+                alert('Error: ' + (result.error || 'Failed to add child'));
+            }
         }
 
         // Process Deposit
-        function processDeposit(event) {
+        async function processDeposit(event) {
             event.preventDefault();
             
-            const childId = document.getElementById('depositChild').value;
+            const childId = parseInt(document.getElementById('depositChild').value);
             const amount = parseFloat(document.getElementById('depositAmount').value);
             const method = document.getElementById('paymentMethod').value;
             const pin = document.getElementById('depositPIN').value;
 
-            if (pin !== parentData.pin) {
-                alert('Invalid PIN');
+            if (!childId || !amount || !method || !pin) {
+                alert('Please fill all fields');
                 return;
             }
 
-            const child = parentData.children.find(c => c.id === childId);
-            if (child) {
-                child.balance += amount;
-                parentData.transactions.unshift({
-                    id: 'txn-' + Date.now(),
-                    childName: child.name,
-                    amount: amount,
-                    method: method,
-                    date: new Date().toLocaleDateString(),
-                    status: 'Completed'
-                });
-                saveData();
+            const result = await apiCall('makeDeposit', { child_id: childId, amount, method, pin }, 'POST');
+            
+            if (result.success) {
                 closeDepositModal();
                 document.getElementById('depositForm').reset();
-                updateDashboard();
+                await loadData();
+                await updateDashboard();
                 alert('Deposit successful!');
+            } else {
+                alert('Error: ' + (result.error || 'Failed to process deposit'));
             }
         }
 
         // Invite Contributor
-        function inviteContributor(event) {
+        async function inviteContributor(event) {
             event.preventDefault();
-            const contributor = {
-                id: 'contrib-' + Date.now(),
-                name: document.getElementById('contributorName').value,
-                phone: document.getElementById('contributorPhone').value,
-                relationship: document.getElementById('relationship').value,
-                status: 'Invited',
-                contributed: 0
-            };
-            parentData.contributors.push(contributor);
-            saveData();
-            closeInviteModal();
-            document.getElementById('inviteForm').reset();
-            updateDashboard();
-            alert('Invitation sent!');
+            const name = document.getElementById('contributorName').value;
+            const phone = document.getElementById('contributorPhone').value;
+            const relationship = document.getElementById('relationship').value;
+            
+            const result = await apiCall('addContributor', { name, phone, relationship }, 'POST');
+            
+            if (result.success) {
+                closeInviteModal();
+                document.getElementById('inviteForm').reset();
+                await loadData();
+                await updateDashboard();
+                alert('Invitation sent!');
+            } else {
+                alert('Error: ' + (result.error || 'Failed to invite contributor'));
+            }
         }
 
         // Update Dashboard
-        function updateDashboard() {
-            // Update metrics
+        async function updateDashboard() {
+            // Load stats
+            const statsResult = await apiCall('getStats');
+            if (statsResult.success) {
+                document.getElementById('totalSaved').textContent = 'FRW ' + statsResult.data.totalSaved.toLocaleString();
+                document.getElementById('childCount').textContent = statsResult.data.childrenCount;
+                document.getElementById('contributorCount').textContent = statsResult.data.contributorsCount;
+            }
+            
+            // Load children
+            const childrenResult = await apiCall('getChildren');
+            if (childrenResult.success) {
+                parentData.children = childrenResult.data.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    dob: c.dob,
+                    goal: c.goal,
+                    reg_number: c.reg_number || '',
+                    balance: c.balance
+                }));
+            }
+            
+            // Load contributors
+            const contribResult = await apiCall('getContributors');
+            if (contribResult.success) {
+                parentData.contributors = contribResult.data.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    phone: c.phone,
+                    relationship: c.relationship,
+                    status: c.status,
+                    contributed: c.contributed
+                }));
+            }
+            
+            // Update metrics from data
             const totalSaved = parentData.children.reduce((sum, child) => sum + child.balance, 0);
-            document.getElementById('totalSaved').textContent = 'FRW ' + totalSaved.toLocaleString();
-            document.getElementById('childCount').textContent = parentData.children.length;
-            document.getElementById('contributorCount').textContent = parentData.contributors.length;
 
             // Update sidebar stats
             updateSidebarStats();
@@ -907,6 +989,7 @@ $row = $sel->fetch_assoc();
                                 <div>
                                     <h4 class="text-2xl font-bold text-gray-800">${child.name}</h4>
                                     <p class="text-gray-600 text-sm mt-1">${age} years old</p>
+                                    ${child.reg_number ? `<p class="text-gray-500 text-xs mt-1 font-mono">Reg: ${child.reg_number}</p>` : ''}
                                 </div>
                                 <span class="text-4xl">👧</span>
                             </div>
@@ -922,7 +1005,8 @@ $row = $sel->fetch_assoc();
                                     </div>
                                     <p class="text-gray-700 text-sm font-semibold mt-2">${progress.toFixed(1)}% Complete</p>
                                 </div>
-                                <button onclick="depositForChild('${child.id}')" class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 font-bold transition">💳 Add Deposit</button>
+                                <button onclick="depositForChild(${child.id})" class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 font-bold transition">💳 Add Deposit</button>
+                                <button onclick="showChildDetail(${child.id})" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-bold transition">View Details</button>
                             </div>
                         </div>
                     `;
@@ -964,23 +1048,26 @@ $row = $sel->fetch_assoc();
         // Populate Child Selects
         function populateChildSelects() {
             const select = document.getElementById('depositChild');
-            select.innerHTML = '<option value="">Choose a child...</option>' + 
-                parentData.children.map(c => `<option value="${c.id}">${c.name} - FRW ${c.balance.toLocaleString()}</option>`).join('');
+            if (select) {
+                select.innerHTML = '<option value="">Choose a child...</option>' + 
+                    parentData.children.map(c => `<option value="${c.id}">${c.name} - FRW ${c.balance.toLocaleString()}</option>`).join('');
+            }
         }
 
         // Deposit for Child
         function depositForChild(childId) {
-            document.getElementById('depositChild').value = childId;
+            if (document.getElementById('depositChild')) {
+                document.getElementById('depositChild').value = childId;
+            }
             openDepositModal();
         }
 
         // View Transactions
-        function openViewTransactions() {
+        async function openViewTransactions() {
             const container = document.getElementById('transactionsList');
-            if (parentData.transactions.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-8">No transactions yet</p>';
-            } else {
-                container.innerHTML = parentData.transactions.map(txn => `
+            const result = await apiCall('getTransactions');
+            if (result.success && result.data.length > 0) {
+                container.innerHTML = result.data.map(txn => `
                     <div class="flex justify-between items-center p-3 bg-gray-50 rounded border-l-4 border-green-500">
                         <div>
                             <p class="font-bold text-gray-800">${txn.childName}</p>
@@ -989,6 +1076,8 @@ $row = $sel->fetch_assoc();
                         <p class="font-bold text-lg text-green-600">+FRW ${txn.amount.toLocaleString()}</p>
                     </div>
                 `).join('');
+            } else {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">No transactions yet</p>';
             }
             document.getElementById('transactionsModal').classList.remove('hidden');
         }
@@ -1012,35 +1101,33 @@ $row = $sel->fetch_assoc();
         function closeAddPaymentMethodModal() { document.getElementById('addPaymentMethodModal').classList.add('hidden'); }
 
         // Update Account Display
-        function updateAccountDisplay() {
-            document.getElementById('accountName').textContent = parentData.name;
-            document.getElementById('accountPhone').textContent = parentData.phone || '+250 (Not set)';
-            document.getElementById('accountEmail').textContent = parentData.email || 'Not set';
-            document.getElementById('accountCreated').textContent = parentData.accountCreated;
-        }
-
-        // Update Account Settings
-        function updateAccountSettings(event) {
-            event.preventDefault();
-            parentData.name = document.getElementById('settingsName').value;
-            parentData.phone = document.getElementById('settingsPhone').value;
-            parentData.email = document.getElementById('settingsEmail').value;
-            
-            const newPin = document.getElementById('newPin').value;
-            if (newPin) {
-                if (newPin.length !== 4) {
-                    alert('PIN must be 4 digits');
-                    return;
+        async function updateAccountDisplay() {
+            const result = await apiCall('getUser');
+            if (result.success && result.data) {
+                parentData.name = result.data.full_name || parentData.name;
+                parentData.phone = result.data.phone || parentData.phone;
+                parentData.email = result.data.email || parentData.email;
+                parentData.accountCreated = result.data.created_at ? new Date(result.data.created_at).toLocaleDateString() : '';
+                
+                document.getElementById('accountName').textContent = parentData.name;
+                document.getElementById('accountPhone').textContent = parentData.phone || '+250 (Not set)';
+                document.getElementById('accountEmail').textContent = parentData.email || 'Not set';
+                if (document.getElementById('accountCreated')) {
+                    document.getElementById('accountCreated').textContent = parentData.accountCreated;
                 }
-                parentData.pin = newPin;
             }
             
-            saveData();
-            updateAccountDisplay();
-            closeAccountSettingsModal();
-            alert('Account settings updated successfully!');
+            // Populate filter children in transactions
+            const filterChild = document.getElementById('filterChild');
+            if (filterChild) {
+                filterChild.innerHTML = '<option value="">All Children</option>' + 
+                    parentData.children.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            }
+            
+            await updateTransactionsTable();
         }
 
+        
         // Add Payment Method
         function addPaymentMethod(event) {
             event.preventDefault();
@@ -1053,6 +1140,7 @@ $row = $sel->fetch_assoc();
                 return;
             }
 
+            // Note: Payment methods are not stored in database yet
             parentData.paymentMethods.push({
                 type: methodType,
                 name: methodName,
@@ -1060,16 +1148,14 @@ $row = $sel->fetch_assoc();
                 status: 'Pending Verification'
             });
 
-            saveData();
             closeAddPaymentMethodModal();
             document.getElementById('paymentMethodForm').reset();
-            updateDashboard();
-            alert('Payment method added! Awaiting verification.');
+            alert('Payment method added! (Note: This feature stores data locally for now)');
         }
 
         // Show Child Detail
-        function showChildDetail(childId) {
-            const child = parentData.children.find(c => c.id === childId);
+        async function showChildDetail(childId) {
+            const child = parentData.children.find(c => c.id == childId);
             if (!child) return;
 
             // Update child detail section
@@ -1078,14 +1164,18 @@ $row = $sel->fetch_assoc();
             document.getElementById('childDetailDOB').textContent = child.dob;
             document.getElementById('childDetailGoal').textContent = 'FRW ' + child.goal.toLocaleString();
             document.getElementById('childDetailBalance').textContent = 'FRW ' + child.balance.toLocaleString();
+            if (document.getElementById('childDetailRegNumber')) {
+                document.getElementById('childDetailRegNumber').textContent = child.reg_number || 'N/A';
+            }
             
             // Calculate and update progress
             const progress = child.goal > 0 ? Math.round((child.balance / child.goal) * 100) : 0;
             document.getElementById('childDetailProgress').style.width = progress + '%';
             document.getElementById('childDetailProgressText').textContent = progress + '% of goal achieved';
 
-            // Populate deposit history for this child
-            const childTransactions = parentData.transactions.filter(t => t.childName === child.name);
+            // Load transactions for this child
+            const result = await apiCall('getTransactions', { child_id: childId });
+            const childTransactions = result.success ? result.data : [];
             const historyTable = document.getElementById('childDepositHistoryTable');
             
             if (childTransactions.length === 0) {
@@ -1120,11 +1210,12 @@ $row = $sel->fetch_assoc();
         }
 
         // Update Transactions Table
-        function updateTransactionsTable() {
-            const filterChild = document.getElementById('filterChild').value;
-            const searchTerm = document.getElementById('searchTransactions').value.toLowerCase();
+        async function updateTransactionsTable() {
+            const filterChild = document.getElementById('filterChild') ? document.getElementById('filterChild').value : '';
+            const searchTerm = document.getElementById('searchTransactions') ? document.getElementById('searchTransactions').value.toLowerCase() : '';
             
-            let transactions = parentData.transactions;
+            const result = await apiCall('getTransactions');
+            let transactions = result.success ? result.data : [];
             
             // Filter by child if selected
             if (filterChild) {
@@ -1141,6 +1232,8 @@ $row = $sel->fetch_assoc();
             }
 
             const table = document.getElementById('transactionsTable');
+            if (!table) return;
+            
             if (transactions.length === 0) {
                 table.innerHTML = '<tr class="border-b border-gray-200"><td colspan="5" class="px-4 py-3 text-center text-gray-600">No transactions found</td></tr>';
             } else {
@@ -1154,29 +1247,24 @@ $row = $sel->fetch_assoc();
                     </tr>
                 `).join('');
             }
+            
+            parentData.transactions = transactions;
         }
 
         // Update Settings Display
         function updateSettingsDisplay() {
-            document.getElementById('settingsName').textContent = parentData.name;
-            document.getElementById('settingsEmail').textContent = parentData.email || 'Not set';
-            document.getElementById('settingsPhone').textContent = parentData.phone || 'Not set';
-            document.getElementById('settingsCreated').textContent = parentData.accountCreated;
-        }
-
-        // Update Account Display
-        function updateAccountDisplay() {
-            document.getElementById('accountName').textContent = parentData.name;
-            document.getElementById('accountEmail').textContent = parentData.email || '(Not provided)';
-            document.getElementById('accountPhone').textContent = parentData.phone || '(Not provided)';
-            updateSettingsDisplay();
-            
-            // Populate filter children in transactions
-            const filterChild = document.getElementById('filterChild');
-            filterChild.innerHTML = '<option value="">All Children</option>' + 
-                parentData.children.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-            
-            updateTransactionsTable();
+            if (document.getElementById('settingsName')) {
+                document.getElementById('settingsName').textContent = parentData.name;
+            }
+            if (document.getElementById('settingsEmail')) {
+                document.getElementById('settingsEmail').textContent = parentData.email || 'Not set';
+            }
+            if (document.getElementById('settingsPhone')) {
+                document.getElementById('settingsPhone').textContent = parentData.phone || 'Not set';
+            }
+            if (document.getElementById('settingsCreated')) {
+                document.getElementById('settingsCreated').textContent = parentData.accountCreated;
+            }
         }
 
         // Click handlers for child cards
@@ -1234,6 +1322,9 @@ $row = $sel->fetch_assoc();
             if (sectionId === 'settings') {
                 updateSettingsDisplay();
             }
+            if (sectionId === 'account') {
+                updateAccountDisplay();
+            }
         }
 
         // Modal Functions
@@ -1246,8 +1337,8 @@ $row = $sel->fetch_assoc();
         }
 
         function openDepositModal() {
-            document.getElementById('depositModal').classList.remove('hidden');
             populateChildSelects();
+            document.getElementById('depositModal').classList.remove('hidden');
         }
 
         function closeDepositModal() {
@@ -1305,16 +1396,42 @@ $row = $sel->fetch_assoc();
             document.getElementById('viewContributorModal').classList.add('hidden');
         }
 
-        // Storage
-        function saveData() {
-            localStorage.setItem('parentData', JSON.stringify(parentData));
-        }
-
-        function loadData() {
-            const saved = localStorage.getItem('parentData');
-            if (saved) parentData = JSON.parse(saved);
-            // Call api.js function to fetch and display username from database
-            displayUsername();
+        // Load Data
+        async function loadData() {
+            // Load user data
+            const userResult = await apiCall('getUser');
+            if (userResult.success && userResult.data) {
+                parentData.name = userResult.data.full_name || parentData.name;
+                parentData.phone = userResult.data.phone || parentData.phone;
+                parentData.email = userResult.data.email || parentData.email;
+                parentData.accountCreated = userResult.data.created_at ? new Date(userResult.data.created_at).toLocaleDateString() : '';
+            }
+            
+            // Load children
+            const childrenResult = await apiCall('getChildren');
+            if (childrenResult.success) {
+                parentData.children = childrenResult.data.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    dob: c.dob,
+                    goal: c.goal,
+                    reg_number: c.reg_number || '',
+                    balance: c.balance
+                }));
+            }
+            
+            // Load contributors
+            const contribResult = await apiCall('getContributors');
+            if (contribResult.success) {
+                parentData.contributors = contribResult.data.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    phone: c.phone,
+                    relationship: c.relationship,
+                    status: c.status,
+                    contributed: c.contributed
+                }));
+            }
         }
 
         // Sidebar Functions
@@ -1357,10 +1474,21 @@ $row = $sel->fetch_assoc();
         // Logout
         function logout() {
             if (confirm('Sign out?')) {
-                localStorage.removeItem('parentData');
                 window.location.href = './login.html';
             }
         }
+        
+        // Add event listeners for transaction search and filter
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchTransactions');
+            const filterSelect = document.getElementById('filterChild');
+            if (searchInput) {
+                searchInput.addEventListener('input', updateTransactionsTable);
+            }
+            if (filterSelect) {
+                filterSelect.addEventListener('change', updateTransactionsTable);
+            }
+        });
 </script>
 </body>
 </html>
