@@ -14,12 +14,13 @@ if(isset($_POST['register'])){
     
     $hashedpassword = password_hash($password,PASSWORD_DEFAULT);
 
-    $acc = $conn->query("SELECT full_name FROM users ");
+    $acc = $conn->query("SELECT full_name FROM users WHERE full_name = '$username'");
 
     if($acc->num_rows>0){
         ?>
         <script>
             window.alert("Username Aleardy Taken By Another User");
+            window.history.back();
         </script>
         <?php
 
@@ -30,7 +31,8 @@ if(isset($_POST['register'])){
     if($ins){
         ?>
         <script>
-            window.alert('🎉Thank You For Registering To Our Platform')
+            window.alert('🎉Thank You For Registering To Our Platform');
+            window.location.href = "http://127.0.0.1:5500/login.html";
         </script>
         <?php
     }
@@ -109,6 +111,19 @@ if(isset($_POST['deposit'])){
     $type = trim($_POST['type']);
     $pin = trim($_POST['PIN']);
     $hashpin = password_hash($pin,PASSWORD_DEFAULT);
+
+
+$sql = $conn->query("SELECT * FROM children WHERE Reg_Number = '$reg'");
+
+if ($sql->num_rows == 0) {
+    ?>
+    <script>
+        alert("Registration Number Not Found");
+    </script>
+    <?php
+    exit;
+}
+
 
     $stmt = $conn->prepare("INSERT INTO deposits(username, child_reg, role, amount, deposit_method, pin) VALUES(?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("ssssss", $username, $reg, $role, $amount, $type, $hashpin);

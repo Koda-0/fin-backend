@@ -68,7 +68,7 @@ include 'conn.php';
             </div>
             <div class="flex items-center space-x-4">
                 <span class="hidden md:inline text-gray-600 text-sm">Welcome, <span class="font-bold" id="headerName"><?= $_SESSION['username'] ?></span>!</span>
-                <button onclick="logout()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">Sign Out</button>
+                <button onclick="window.location.href='logout.php'" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">Sign Out</button>
             </div>
         </div>
     </nav>
@@ -115,7 +115,7 @@ include 'conn.php';
                         <div class="text-5xl mb-3">👤</div>
                         <h2 class="text-lg font-bold text-gray-800" id="sidebarName"><?= $_SESSION['username'] ?></h2>
                         <p class="text-gray-600 text-sm mt-1" id="sidebarPhone">
-                            +25 <?= $phone ?>
+                            +25<?= $phone ?>
                         </p>
 
                     </div>
