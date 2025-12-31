@@ -48,6 +48,7 @@ if(isset($_POST['register'])){
 
 }
 
+
 if(isset($_POST['login'])){
 
     $username = trim($_POST['names']);
@@ -92,6 +93,53 @@ if(isset($_POST['login'])){
     }
 
 }
+
+if(isset($_POST['signin'])){
+
+    $username = trim($_POST['names']);
+    $password = trim($_POST['password']);
+
+    $stmt = $conn->prepare("SELECT admin_id, password, admin_names FROM admin WHERE admin_names = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if($result->num_rows > 0){
+        $admin = $result->fetch_assoc();
+        $hashedPassword = $admin['password'];
+       if(password_verify($password, $hashedPassword)){
+        $_SESSION['username'] = $admin['admin_names'];
+        $_SESSION['id'] = $admin['admin_id'];
+        $_SESSION['role'] = 'admin';
+        ?>
+        <script>
+            window.alert("Login Successfull");
+            window.location.href = "http://localhost/fin-backend/admin.php";
+        </script>
+        <?php
+       }
+
+       else{
+        ?>
+        <script>
+            window.alert("Incorrect Username Or Password!");
+            window.location.href = "http://127.0.0.1:5500/admin.html";
+        </script>
+        <?php
+       }
+       $stmt->close();
+    }
+    else{
+        ?>
+        <script>
+            window.alert("Incorrect Username Or Password!");
+            window.location.href = "http://127.0.0.1:5500/login.html";
+        </script>
+        <?php
+    }
+
+}
+
 
 if(isset($_POST['deposit'])){
 
@@ -146,13 +194,6 @@ if ($sql->num_rows == 0) {
 }
 
 
-    if($dep){
-        ?>
-        <script>
-            window.alert("Deposited Successfully!");
-        </script>
-        <?php
-    }
 
     else{
         ?>
