@@ -125,8 +125,13 @@ include 'conn.php';
                 </div>
 
                 <nav class="space-y-2">
-                    <button onclick="showSection('overview')" class="sidebar-nav-item active w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 font-medium transition">
+
+                    <button onclick="window.location.href='http://127.0.0.1:5500/index.html'" class="sidebar-nav-item w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 font-medium transition">
                         🏠 Home
+                    </button>
+
+                    <button onclick="showSection('overview')" class="sidebar-nav-item active w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 font-medium transition">
+                        🏠 Dashboard
                     </button>
                     <button onclick="showSection('children')" class="sidebar-nav-item w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 font-medium transition">
                         👧 Children
