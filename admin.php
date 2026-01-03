@@ -1,5 +1,11 @@
 <?php
 include 'conn.php';
+session_start();
+
+if (!isset($_SESSION['admin']) || $_SESSION['role'] !== 'admin') {
+    header("Location: login.php"); // redirect if not logged in
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -9,6 +15,10 @@ include 'conn.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="shortcut icon" href="1.png" type="image/x-icon">
+    <!-- Font Awesome Free -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 </head>
 <body class="bg-gray-100">
     <aside class="w-64 bg-gray-900 text-white h-screen flex flex-col fixed">
@@ -25,12 +35,14 @@ include 'conn.php';
 
     <main class="flex-1  p-6 space-y-8 ml-64">
         <div class="flex justify-between ">
-            <h1 class="text-3xl font-bold ">Dashboard</h1>
-            <button class="bg-red-500 px-4 py-2 rounded text-center text-white hover:bg-red-600">
-                Logout
+            <h1 class="text-3xl font-bold ">Dashboard</h1> <br>
+            <button onclick="window.location.href='logout.php'" class="bg-red-500 px-4 py-2 rounded text-center text-white hover:bg-red-600">
+                Logout <i class="fa-solid fa-power-off"></i>
             </button>
         </div>
-
+        <div class="bg-white shadow border py-6 px-4  rounded-lg">
+        <p class="text-xl">Welcome Back In Simulation , Mr. <?= $_SESSION['admin'] ?></p>
+        </div>
       <div class="mt-8">
         <div class="grid grid-cols-3 gap-6">
             <div class="bg-white flex flex-col p-6 rounded shadow">

@@ -99,6 +99,9 @@ if(isset($_POST['signin'])){
     $username = trim($_POST['names']);
     $password = trim($_POST['password']);
 
+    $_SESSION['admin'] = $username;
+    $_SESSION['role'] = 'admin';
+    
     $stmt = $conn->prepare("SELECT admin_id, password, admin_names FROM admin WHERE admin_names = ?");
     $stmt->bind_param("s", $username);
     $stmt->execute();

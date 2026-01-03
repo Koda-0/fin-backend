@@ -12,6 +12,7 @@ include 'conn.php';
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <script src="./api.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, rgba(0, 0, 128, 0.9) 0%, #764ba2 100%);
@@ -62,13 +63,14 @@ include 'conn.php';
             <div class="flex items-center space-x-4">
                 <button onclick="toggleSidebar()" class="md:hidden text-gray-800 text-2xl">☰</button>
                 <div class="flex items-center space-x-2">
-                    <span class="text-2xl">👪</span>
-                    <h1 class="text-xl font-bold text-gray-800">MYCHILD</h1>
+                <a href="">
+                  <img src="1.png" class="w-12 h-12" alt="">
+                </a>  
                 </div>
             </div>
             <div class="flex items-center space-x-4">
                 <span class="hidden md:inline text-gray-600 text-sm">Welcome, <span class="font-bold" id="headerName"><?= $_SESSION['username'] ?></span>!</span>
-                <button onclick="window.location.href='logout.php'" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">Sign Out</button>
+                <button onclick="window.location.href='logout.php'" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">Sign Out <i class="fas fa-power-off"></i></button>
             </div>
         </div>
     </nav>
